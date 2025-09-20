@@ -13,18 +13,37 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: #00ff00;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #terminal-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
         }
 
         .container {
             text-align: center;
             max-width: 600px;
             padding: 2rem;
+            position: relative;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            box-shadow: 0 0 50px rgba(0, 255, 0, 0.2);
         }
 
         .logo {
@@ -32,12 +51,20 @@
             font-weight: bold;
             margin-bottom: 1rem;
             letter-spacing: 2px;
+            text-shadow: 0 0 20px #00ff00;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 20px #00ff00; }
+            to { text-shadow: 0 0 30px #00ff00, 0 0 40px #00ff00; }
         }
 
         .title {
             font-size: 2rem;
             margin-bottom: 1rem;
             font-weight: 300;
+            text-shadow: 0 0 10px #00ff00;
         }
 
         .subtitle {
@@ -49,13 +76,19 @@
 
         .renovation-badge {
             display: inline-block;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(0, 255, 0, 0.2);
             padding: 0.8rem 2rem;
             border-radius: 50px;
             font-size: 1rem;
             font-weight: 500;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(0, 255, 0, 0.5);
             backdrop-filter: blur(10px);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { border-color: rgba(0, 255, 0, 0.5); }
+            50% { border-color: rgba(0, 255, 0, 1); }
         }
 
         .contact-info {
@@ -65,15 +98,16 @@
         }
 
         .contact-info a {
-            color: white;
+            color: #00ff00;
             text-decoration: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+            border-bottom: 1px solid rgba(0, 255, 0, 0.5);
             transition: all 0.3s ease;
         }
 
         .contact-info a:hover {
-            border-bottom-color: white;
+            border-bottom-color: #00ff00;
             opacity: 1;
+            text-shadow: 0 0 10px #00ff00;
         }
 
         @media (max-width: 768px) {
@@ -96,6 +130,7 @@
     </style>
 </head>
 <body>
+    <canvas id="terminal-canvas"></canvas>
     <div class="container">
         <div class="logo">K</div>
         <h1 class="title">Kaushik</h1>
@@ -110,5 +145,150 @@
             <p>For immediate contact, please reach out via email or LinkedIn.</p>
         </div>
     </div>
+
+    <script>
+        class TerminalEffect {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.time = 0;
+                this.mouse = { x: 0.5, y: 0.5 };
+                this.smoothMouse = { x: 0.5, y: 0.5 };
+                this.init();
+            }
+
+            init() {
+                this.resize();
+                this.bindEvents();
+                this.animate();
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            bindEvents() {
+                window.addEventListener('resize', () => this.resize());
+                window.addEventListener('mousemove', (e) => {
+                    this.mouse.x = e.clientX / window.innerWidth;
+                    this.mouse.y = e.clientY / window.innerHeight;
+                });
+            }
+
+            hash(p) {
+                let h = Math.sin(p.x * 12.9898 + p.y * 78.233) * 43758.5453;
+                return h - Math.floor(h);
+            }
+
+            noise(p) {
+                return Math.sin(p.x * 10) * Math.sin(p.y * (3 + Math.sin(this.time * 0.1))) + 0.2;
+            }
+
+            digit(p) {
+                const gridSize = 15;
+                const s = {
+                    x: Math.floor(p.x * gridSize) / gridSize,
+                    y: Math.floor(p.y * gridSize) / gridSize
+                };
+                
+                let intensity = this.noise(s) * 1.3 - 0.03;
+                
+                // Mouse interaction
+                const distToMouse = Math.sqrt((s.x - this.smoothMouse.x) ** 2 + (s.y - this.smoothMouse.y) ** 2);
+                const mouseInfluence = Math.exp(-distToMouse * 8) * 0.5 * 10;
+                intensity += mouseInfluence;
+                
+                // Page load animation
+                const cellRandom = this.hash(s);
+                const cellDelay = cellRandom * 0.8;
+                const cellProgress = Math.min(Math.max((this.time * 0.001 - cellDelay) / 0.2, 0), 1);
+                intensity *= cellProgress;
+                
+                p.x = (p.x * gridSize) % 1;
+                p.y = (p.y * gridSize) % 1;
+                p.x *= 1.2;
+                p.y *= 1.2;
+                
+                const px5 = p.x * 5;
+                const py5 = (1 - p.y) * 5;
+                const x = px5 % 1;
+                const y = py5 % 1;
+                
+                const i = Math.floor(py5) - 2;
+                const j = Math.floor(px5) - 2;
+                const n = i * i + j * j;
+                const f = n * 0.0625;
+                
+                const isOn = intensity - f > 0.1 ? 1 : 0;
+                const brightness = isOn * (0.2 + y * 0.8) * (0.75 + x * 0.25);
+                
+                return (p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1) ? brightness : 0;
+            }
+
+            getColor(p) {
+                const bar = (p.y + this.time * 0.02) % 1 < 0.2 ? 1.4 : 1.0;
+                const displacement = Math.sin(p.y * 20 + this.time) * 0.0125 * Math.sin(this.time * 60) * bar;
+                p.x += displacement;
+                
+                const middle = this.digit(p);
+                const off = 0.002;
+                let sum = 0;
+                for (let x = -1; x <= 1; x++) {
+                    for (let y = -1; y <= 1; y++) {
+                        sum += this.digit({ x: p.x + x * off, y: p.y + y * off });
+                    }
+                }
+                
+                const baseColor = 0.9 * middle + sum * 0.1 * bar;
+                return Math.min(baseColor, 1);
+            }
+
+            render() {
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                const imageData = this.ctx.createImageData(this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+                
+                for (let y = 0; y < this.canvas.height; y++) {
+                    for (let x = 0; x < this.canvas.width; x++) {
+                        const p = {
+                            x: x / this.canvas.width * 1.5,
+                            y: y / this.canvas.height * 1.5
+                        };
+                        
+                        const intensity = this.getColor(p);
+                        const index = (y * this.canvas.width + x) * 4;
+                        
+                        data[index] = 0;     // R
+                        data[index + 1] = intensity * 255; // G
+                        data[index + 2] = 0; // B
+                        data[index + 3] = 255; // A
+                    }
+                }
+                
+                this.ctx.putImageData(imageData, 0, 0);
+            }
+
+            animate() {
+                this.time += 16;
+                
+                // Smooth mouse movement
+                const damping = 0.08;
+                this.smoothMouse.x += (this.mouse.x - this.smoothMouse.x) * damping;
+                this.smoothMouse.y += (this.mouse.y - this.smoothMouse.y) * damping;
+                
+                this.render();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            const canvas = document.getElementById('terminal-canvas');
+            new TerminalEffect(canvas);
+        });
+    </script>
 </body>
 </html>
